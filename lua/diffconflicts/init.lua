@@ -113,7 +113,7 @@ local function check_then_show_history()
     end
   else
     file_check = function(name)
-      return name:find("BASE$") or name:find("LOCAL$") or name:find("REMOTE$")
+      return name:find("BASE") or name:find("LOCAL") or name:find("REMOTE")
     end
   end
 
