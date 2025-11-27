@@ -118,8 +118,7 @@ local function check_then_show_history()
   end
 
   local existing_buffers = vim.tbl_filter(function(bufnr)
-    return vim.api.nvim_buf_is_loaded(bufnr)
-      and vim.api.nvim_buf_get_name(bufnr) ~= ""
+    return vim.api.nvim_buf_get_name(bufnr) ~= ""
       and file_check(vim.api.nvim_buf_get_name(bufnr))
   end, vim.api.nvim_list_bufs())
 
