@@ -1,0 +1,21 @@
+{
+    "$schema": "https://opencode.ai/config.json",
+    "lsp": true,
+    "formatter": true,
+    "mcp": {
+        "gh_grep": {
+            "enabled": true,
+        },
+        "websearch": {
+            "enabled": true,
+        },
+        "knowledge-base": {
+            "type": "local",
+            "command": ["lancedb-mcp"],
+            "environment": {
+                "KB_STORAGE_PATH": "/mnt/knowledge-base/diffconflicts.nvim"
+            },
+            "enabled": true
+        }
+    },
+}
