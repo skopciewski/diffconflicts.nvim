@@ -97,3 +97,14 @@ require("diffconflicts").show()
 require("diffconflicts").show_history()
 require("diffconflicts").show_with_history()
 ```
+## Conventions
+
+Conventions for contributing to this repo:
+
+- **Comments:** none unless explicitly requested. Express intent through names
+  and structure. `why`/intent comments are subject to the **same** restriction —
+  explaining *why* rather than *what* does **not** exempt a comment from it.
+- **Docstrings:** follow existing practice in `src/` — contract only (params,
+  returns, raises, non-obvious side effects). Not affected by the comment rule.
+- **Regression / security tests:** encode the incident in the test *name*
+  (e.g. `test_crafted_id_leaves_other_rows_intact`), not a comment.
