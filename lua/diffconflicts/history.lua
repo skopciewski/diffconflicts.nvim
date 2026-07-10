@@ -76,7 +76,7 @@ function M.seed_history_bufs_from_args(opts)
     end
     local cur_win = vim.api.nvim_get_current_win()
     local cur_buf = vim.api.nvim_get_current_buf()
-    local ok = pcall(vim.cmd.edit, vim.fn.fnameescape(abs))
+    local ok = util.open_file_safe(abs)
     local b = ok and vim.api.nvim_get_current_buf() or nil
     if cur_win and vim.api.nvim_win_is_valid(cur_win) then
       pcall(vim.api.nvim_set_current_win, cur_win)
@@ -200,7 +200,7 @@ local function try_open_history_files_from_disk()
 
   for _, p in ipairs({ local_p, base_p, remote_p }) do
     if p and p ~= "" then
-      pcall(vim.cmd.edit, vim.fn.fnameescape(p))
+      util.open_file_safe(p)
     end
   end
 end

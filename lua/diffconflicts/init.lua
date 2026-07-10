@@ -1,7 +1,7 @@
 local config = require("diffconflicts.config")
 local diff = require("diffconflicts.diff")
 local history = require("diffconflicts.history")
-local match = require("diffconflicts.match")
+local util = require("diffconflicts.util")
 
 local M = {}
 
@@ -22,7 +22,7 @@ M.show = function(opts)
     local merged_abs = vim.fn.fnamemodify(merged, ":p")
     local cur_abs = cur ~= "" and vim.fn.fnamemodify(cur, ":p") or ""
     if cur_abs == "" or cur_abs ~= merged_abs then
-      pcall(vim.cmd.edit, vim.fn.fnameescape(merged))
+      util.open_file_safe(merged)
     end
   end
   diff.check_then_diff()

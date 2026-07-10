@@ -67,19 +67,15 @@ local function advance_to_next_conflicted_file(current_abs_path)
   return true
 end
 
-local function diff_confl()
-  local orig_buf = vim.api.nvim_get_current_buf()
-  local orig_ft = vim.bo.filetype
-  local left_win = vim.api.nvim_get_current_win()
-
-  local conflict_style
-  if config.values.vcs == "git" then
-    local result = vim.fn.system("git config --get merge.conflictStyle")
-    conflict_style = result:gsub("%s$", "")
-  else
-    conflict_style = "diff"
+local function detect_conflict_style()
+  if config.values.vcs ~= "git" then
+    return "diff"
   end
+  local result = vim.fn.system("git config --get merge.conflictStyle")
+  return result:gsub("%s$", "")
+end
 
+local function setup_right_pane(orig_buf, orig_ft)
   vim.cmd("rightb vsplit")
   vim.cmd("enew")
   local right_win = vim.api.nvim_get_current_win()
@@ -98,6 +94,10 @@ local function diff_confl()
   vim.bo.bufhidden = "delete"
   vim.bo.buflisted = false
 
+  return right_win, right_buf
+end
+
+local function setup_left_pane(left_win, conflict_style)
   vim.api.nvim_set_current_win(left_win)
   vim.cmd("diffthis")
 
@@ -109,38 +109,52 @@ local function diff_confl()
   vim.cmd("silent! g/^<<<<<<< /d")
 
   vim.cmd("diffupdate")
+end
+
+local function register_advance_autocmd(orig_buf, left_win, right_win, right_buf)
+  vim.api.nvim_clear_autocmds({ group = advance_augroup, buffer = orig_buf })
+  vim.api.nvim_create_autocmd("BufWritePost", {
+    group = advance_augroup,
+    buffer = orig_buf,
+    callback = function()
+      util.close_win_if_valid(right_win)
+      util.delete_buf_if_valid(right_buf)
+      util.cleanup_plugin_aux_buffers(orig_buf)
+      if vim.api.nvim_win_is_valid(left_win) then
+        pcall(vim.api.nvim_set_current_win, left_win)
+      end
+
+      if M.has_conflicts() then
+        split_conflict_markers()
+        return
+      end
+
+      local current = vim.api.nvim_buf_get_name(orig_buf)
+      local advanced = advance_to_next_conflicted_file(current)
+      if advanced then
+        return
+      end
+
+      if config.values.qol and config.values.qol.quit_on_done then
+        pcall(function()
+          vim.cmd("qa")
+        end)
+      end
+    end,
+  })
+end
+
+local function split_conflict_markers()
+  local orig_buf = vim.api.nvim_get_current_buf()
+  local orig_ft = vim.bo.filetype
+  local left_win = vim.api.nvim_get_current_win()
+  local conflict_style = detect_conflict_style()
+
+  local right_win, right_buf = setup_right_pane(orig_buf, orig_ft)
+  setup_left_pane(left_win, conflict_style)
 
   if config.values.qol and config.values.qol.advance_on_save then
-    vim.api.nvim_clear_autocmds({ group = advance_augroup, buffer = orig_buf })
-    vim.api.nvim_create_autocmd("BufWritePost", {
-      group = advance_augroup,
-      buffer = orig_buf,
-      callback = function()
-        util.close_win_if_valid(right_win)
-        util.delete_buf_if_valid(right_buf)
-        util.cleanup_plugin_aux_buffers(orig_buf)
-        if vim.api.nvim_win_is_valid(left_win) then
-          pcall(vim.api.nvim_set_current_win, left_win)
-        end
-
-        if M.has_conflicts() then
-          diff_confl()
-          return
-        end
-
-        local current = vim.api.nvim_buf_get_name(orig_buf)
-        local advanced = advance_to_next_conflicted_file(current)
-        if advanced then
-          return
-        end
-
-        if config.values.qol and config.values.qol.quit_on_done then
-          pcall(function()
-            vim.cmd("qa")
-          end)
-        end
-      end,
-    })
+    register_advance_autocmd(orig_buf, left_win, right_win, right_buf)
   end
 end
 
@@ -150,7 +164,7 @@ function M.check_then_diff()
     vim.cmd("echohl WarningMsg")
     vim.cmd([[echon "Resolve conflicts leftward then save. Use :cq to abort."]])
     vim.cmd("echohl None")
-    diff_confl()
+    split_conflict_markers()
   else
     vim.cmd('echohl WarningMsg | echo "No conflict markers found." | echohl None')
   end

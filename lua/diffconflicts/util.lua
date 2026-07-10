@@ -65,4 +65,11 @@ function M.repo_root(path)
   return M.repo_root_from_marker(marker, path)
 end
 
+function M.open_file_safe(path)
+  if path and path ~= "" then
+    return pcall(vim.cmd.edit, vim.fn.fnameescape(path))
+  end
+  return false
+end
+
 return M
