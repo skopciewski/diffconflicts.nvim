@@ -1,0 +1,67 @@
+*diffconflicts.txt*      Two-way diff merge conflict resolution
+
+==============================================================================
+CONTENTS                                                      *diffconflicts*
+
+1. Overview .................................... |diffconflicts-overview|
+2. Commands .................................... |diffconflicts-commands|
+3. Lua API ..................................... |diffconflicts-api|
+4. Configuration ............................... |diffconflicts-config|
+5. Git Mergetool Setup ......................... |diffconflicts-mergetool|
+
+==============================================================================
+OVERVIEW                                              *diffconflicts-overview*
+
+diffconflicts.nvim resolves Git merge conflicts using a two-way diff view.
+Conflict markers are split into left (ours) and right (theirs) panes,
+showing only the conflicting changes side by side.
+
+==============================================================================
+COMMANDS                                              *diffconflicts-commands*
+
+:DiffConflicts [file]                                   *:DiffConflicts*
+    Open the current buffer (or [file]) in two-way diff mode with
+    conflict markers split into ours/theirs panes.
+    Edit the left pane to resolve conflicts; use |:cq| to abort.
+
+:DiffConflictsShowHistory                           *:DiffConflictsShowHistory*
+    Open a new tab with three read-only panes: LOCAL, BASE, REMOTE.
+    Useful for understanding the intent behind conflicting changes.
+
+:DiffConflictsWithHistory [file]               *:DiffConflictsWithHistory*
+    Shortcut for both :DiffConflicts and :DiffConflictsShowHistory.
+
+==============================================================================
+LUA API                                                    *diffconflicts-api*
+
+    require("diffconflicts").show()              Open diff view
+    require("diffconflicts").show_history()      Open history tab
+    require("diffconflicts").show_with_history() Open both
+
+The `show` and `show_with_history` functions accept an optional opts table
+with `fargs` for mergetool file path resolution.
+
+==============================================================================
+CONFIGURATION                                        *diffconflicts-config*
+
+    require("diffconflicts").setup({
+      qol = {
+        advance_on_save = true,   -- Auto-advance to next conflict on :w
+        quit_on_done = true,      -- Auto-quit when all conflicts resolved
+      },
+    })
+
+All options are optional; the plugin works with defaults.
+
+==============================================================================
+GIT MERGETOOL SETUP                                *diffconflicts-mergetool*
+
+    git config --global merge.tool diffconflicts
+    git config --global mergetool.diffconflicts.cmd \
+      'nvim -c DiffConflicts "$MERGED" "$BASE" "$LOCAL" "$REMOTE"'
+    git config --global mergetool.diffconflicts.trustExitCode true
+    git config --global mergetool.keepBackup false
+
+Then resolve conflicts with: |git mergetool|
+
+ vim:tw=78:ts=8:ft=help:norl:

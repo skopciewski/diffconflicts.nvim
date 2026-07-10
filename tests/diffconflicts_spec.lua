@@ -1,4 +1,31 @@
 local dc = require("diffconflicts")
+local match = require("diffconflicts.match")
+local config = require("diffconflicts.config")
+local diff = require("diffconflicts.diff")
+
+describe("config", function()
+  before_each(function()
+    config.values = vim.deepcopy(config.defaults)
+  end)
+
+  it("merges user options over defaults", function()
+    config.setup({ vcs = "hg", qol = { advance_on_save = false } })
+    assert.are.equal("hg", config.values.vcs)
+    assert.is_false(config.values.qol.advance_on_save)
+    assert.is_true(config.values.qol.quit_on_done)
+  end)
+
+  it("partial merge preserves unspecified defaults", function()
+    config.setup({ qol = {} })
+    assert.is_true(config.values.qol.advance_on_save)
+    assert.is_true(config.values.qol.quit_on_done)
+  end)
+
+  it("empty opts does not change defaults", function()
+    config.setup({})
+    assert.are.equal("git", config.values.vcs)
+  end)
+end)
 
 describe("match_history_role", function()
   it("matches delimiter-delimited history buffer names", function()
@@ -19,7 +46,7 @@ describe("match_history_role", function()
     }
     for _, c in ipairs(true_cases) do
       assert.is_true(
-        dc._match_history_role(c[1], c[2]),
+        match.history_role(c[1], c[2]),
         string.format("expected true: %q matches %q", c[1], c[2])
       )
     end
@@ -39,7 +66,7 @@ describe("match_history_role", function()
     }
     for _, c in ipairs(false_cases) do
       assert.is_false(
-        dc._match_history_role(c[1], c[2]),
+        match.history_role(c[1], c[2]),
         string.format("expected false: %q should not match %q", c[1], c[2])
       )
     end
@@ -61,7 +88,7 @@ describe("has_conflicts", function()
       ">>>>>>> branch",
     })
     vim.api.nvim_set_current_buf(buf)
-    assert.is_true(dc._has_conflicts())
+    assert.is_true(diff.has_conflicts())
   end)
 
   it("returns true for diff3 conflict markers", function()
@@ -76,27 +103,27 @@ describe("has_conflicts", function()
       ">>>>>>> branch",
     })
     vim.api.nvim_set_current_buf(buf)
-    assert.is_true(dc._has_conflicts())
+    assert.is_true(diff.has_conflicts())
   end)
 
   it("returns false for buffer without conflict markers", function()
     local buf = vim.api.nvim_create_buf(true, false)
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "normal content" })
     vim.api.nvim_set_current_buf(buf)
-    assert.is_false(dc._has_conflicts())
+    assert.is_false(diff.has_conflicts())
   end)
 
   it("returns false for empty buffer", function()
     local buf = vim.api.nvim_create_buf(true, false)
     vim.api.nvim_set_current_buf(buf)
-    assert.is_false(dc._has_conflicts())
+    assert.is_false(diff.has_conflicts())
   end)
 
   it("requires markers at start of line", function()
     local buf = vim.api.nvim_create_buf(true, false)
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, { " <<<<<<< HEAD" })
     vim.api.nvim_set_current_buf(buf)
-    assert.is_false(dc._has_conflicts())
+    assert.is_false(diff.has_conflicts())
   end)
 end)
 
