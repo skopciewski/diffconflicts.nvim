@@ -3,14 +3,28 @@ local match = require("diffconflicts.match")
 local config = require("diffconflicts.config")
 local diff = require("diffconflicts.diff")
 
+local function cleanup_neovim_state()
+  while #vim.api.nvim_list_wins() > 1 do
+    pcall(vim.api.nvim_win_close, vim.api.nvim_list_wins()[2], true)
+  end
+  local cur_tab = vim.api.nvim_get_current_tabpage()
+  local tabs = vim.api.nvim_list_tabpages()
+  for i = #tabs, 2, -1 do
+    pcall(vim.api.nvim_set_current_tabpage, tabs[i])
+    pcall(vim.cmd, "tabclose!")
+  end
+  pcall(vim.api.nvim_set_current_tabpage, cur_tab)
+  vim.g.diffconflicts_history_bufs = nil
+  vim.api.nvim_clear_autocmds({ group = "diffconflicts.nvim.advance" })
+end
+
 describe("config", function()
   before_each(function()
     config.values = vim.deepcopy(config.defaults)
   end)
 
   it("merges user options over defaults", function()
-    config.setup({ vcs = "hg", qol = { advance_on_save = false } })
-    assert.are.equal("hg", config.values.vcs)
+    config.setup({ qol = { advance_on_save = false } })
     assert.is_false(config.values.qol.advance_on_save)
     assert.is_true(config.values.qol.quit_on_done)
   end)
@@ -23,7 +37,7 @@ describe("config", function()
 
   it("empty opts does not change defaults", function()
     config.setup({})
-    assert.are.equal("git", config.values.vcs)
+    assert.is_true(config.values.qol.advance_on_save)
   end)
 end)
 
@@ -75,7 +89,7 @@ end)
 
 describe("has_conflicts", function()
   before_each(function()
-    dc.setup({ vcs = "hg", qol = { advance_on_save = false, quit_on_done = false } })
+    dc.setup({ qol = { advance_on_save = false, quit_on_done = false } })
   end)
 
   it("returns true when buffer contains conflict markers", function()
@@ -129,23 +143,9 @@ end)
 
 describe("diff_confl — two-way split", function()
   before_each(function()
-    -- Close windows left by previous groups
-    while #vim.api.nvim_list_wins() > 1 do
-      pcall(vim.api.nvim_win_close, vim.api.nvim_list_wins()[2], true)
-    end
-    -- Close tabs from previous groups
-    local cur_tab = vim.api.nvim_get_current_tabpage()
-    local tabs = vim.api.nvim_list_tabpages()
-    for i = #tabs, 2, -1 do
-      pcall(vim.api.nvim_set_current_tabpage, tabs[i])
-      pcall(vim.cmd, "tabclose!")
-    end
-    pcall(vim.api.nvim_set_current_tabpage, cur_tab)
-    -- Clear globals
-    vim.g.diffconflicts_history_bufs = nil
-    vim.api.nvim_clear_autocmds({ group = "diffconflicts.nvim.advance" })
+    cleanup_neovim_state()
 
-    dc.setup({ vcs = "hg", qol = { advance_on_save = false, quit_on_done = false } })
+    dc.setup({ qol = { advance_on_save = false, quit_on_done = false } })
   end)
 
   it("splits conflict markers into left-ours and right-theirs panes", function()
@@ -250,27 +250,73 @@ describe("diff_confl — two-way split", function()
     assert.is_true(vim.wo[wins[1]].diff)
     assert.is_true(vim.wo[wins[2]].diff)
   end)
+
+  it("handles diff3 conflict style markers", function()
+    local buf = vim.api.nvim_create_buf(true, false)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, {
+      "keep this",
+      "<<<<<<< HEAD",
+      "ours",
+      "||||||| base",
+      "common ancestor",
+      "=======",
+      "theirs",
+      ">>>>>>> branch",
+      "keep this too",
+    })
+    vim.api.nvim_set_current_buf(buf)
+
+    dc.show()
+
+    local wins = vim.api.nvim_list_wins()
+    local left_buf = vim.api.nvim_win_get_buf(wins[1])
+    local left_lines = vim.api.nvim_buf_get_lines(left_buf, 0, -1, false)
+    local left_text = table.concat(left_lines, "\n")
+
+    assert.is_not_nil(left_text:find("keep this", 1, true))
+    assert.is_not_nil(left_text:find("ours", 1, true))
+    assert.is_not_nil(left_text:find("|||||||", 1, true))
+    assert.is_not_nil(left_text:find("common ancestor", 1, true))
+    assert.is_nil(left_text:find("theirs", 1, true))
+    assert.is_not_nil(left_text:find("keep this too", 1, true))
+
+    local right_buf = vim.api.nvim_win_get_buf(wins[2])
+    local right_lines = vim.api.nvim_buf_get_lines(right_buf, 0, -1, false)
+    local right_text = table.concat(right_lines, "\n")
+
+    assert.is_not_nil(right_text:find("keep this", 1, true))
+    assert.is_nil(right_text:find("ours", 1, true))
+    assert.is_nil(right_text:find("|||||||", 1, true))
+    assert.is_not_nil(right_text:find("theirs", 1, true))
+    assert.is_not_nil(right_text:find("keep this too", 1, true))
+  end)
+
+  it("navigates to merged file from mergetool arguments", function()
+    local tmpname = os.tmpname()
+    vim.fn.writefile({
+      "<<<<<<< HEAD",
+      "ours",
+      "=======",
+      "theirs",
+      ">>>>>>> branch",
+    }, tmpname)
+
+    dc.show({ fargs = { tmpname } })
+
+    local bufname = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":p")
+    assert.are.equal(vim.fn.fnamemodify(tmpname, ":p"), bufname)
+
+    os.remove(tmpname)
+  end)
 end)
 
 describe("advance_on_save", function()
   before_each(function()
-    -- Close windows left by previous groups
-    while #vim.api.nvim_list_wins() > 1 do
-      pcall(vim.api.nvim_win_close, vim.api.nvim_list_wins()[2], true)
-    end
-    local cur_tab = vim.api.nvim_get_current_tabpage()
-    local tabs = vim.api.nvim_list_tabpages()
-    for i = #tabs, 2, -1 do
-      pcall(vim.api.nvim_set_current_tabpage, tabs[i])
-      pcall(vim.cmd, "tabclose!")
-    end
-    pcall(vim.api.nvim_set_current_tabpage, cur_tab)
-    vim.g.diffconflicts_history_bufs = nil
-    vim.api.nvim_clear_autocmds({ group = "diffconflicts.nvim.advance" })
+    cleanup_neovim_state()
   end)
 
   it("registers BufWritePost autocmd on the left buffer", function()
-    dc.setup({ vcs = "hg", qol = { advance_on_save = true, quit_on_done = false } })
+    dc.setup({ qol = { advance_on_save = true, quit_on_done = false } })
 
     local buf = vim.api.nvim_create_buf(true, false)
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, {
@@ -296,7 +342,7 @@ describe("advance_on_save", function()
   end)
 
   it("cleans up right pane after resolving conflict and saving", function()
-    dc.setup({ vcs = "hg", qol = { advance_on_save = true, quit_on_done = false } })
+    dc.setup({ qol = { advance_on_save = true, quit_on_done = false } })
 
     local buf = vim.api.nvim_create_buf(true, false)
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, {
@@ -331,20 +377,9 @@ end)
 
 describe("show_history", function()
   before_each(function()
-    while #vim.api.nvim_list_wins() > 1 do
-      pcall(vim.api.nvim_win_close, vim.api.nvim_list_wins()[2], true)
-    end
-    local cur_tab = vim.api.nvim_get_current_tabpage()
-    local tabs = vim.api.nvim_list_tabpages()
-    for i = #tabs, 2, -1 do
-      pcall(vim.api.nvim_set_current_tabpage, tabs[i])
-      pcall(vim.cmd, "tabclose!")
-    end
-    pcall(vim.api.nvim_set_current_tabpage, cur_tab)
-    vim.g.diffconflicts_history_bufs = nil
-    vim.api.nvim_clear_autocmds({ group = "diffconflicts.nvim.advance" })
+    cleanup_neovim_state()
 
-    dc.setup({ vcs = "git", qol = { advance_on_save = false, quit_on_done = false } })
+    dc.setup({ qol = { advance_on_save = false, quit_on_done = false } })
   end)
 
   it("opens three-pane diff view from seeded history buffers", function()

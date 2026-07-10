@@ -1,7 +1,6 @@
 local M = {}
 
 M.defaults = {
-  vcs = "git",
   qol = {
     advance_on_save = true,
     quit_on_done = true,

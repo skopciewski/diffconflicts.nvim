@@ -68,9 +68,6 @@ local function advance_to_next_conflicted_file(current_abs_path)
 end
 
 local function detect_conflict_style()
-  if config.values.vcs ~= "git" then
-    return "diff"
-  end
   local result = vim.fn.system("git config --get merge.conflictStyle")
   return result:gsub("%s$", "")
 end
@@ -111,6 +108,8 @@ local function setup_left_pane(left_win, conflict_style)
   vim.cmd("diffupdate")
 end
 
+local split_conflict_markers
+
 local function register_advance_autocmd(orig_buf, left_win, right_win, right_buf)
   vim.api.nvim_clear_autocmds({ group = advance_augroup, buffer = orig_buf })
   vim.api.nvim_create_autocmd("BufWritePost", {
@@ -135,7 +134,7 @@ local function register_advance_autocmd(orig_buf, left_win, right_win, right_buf
         return
       end
 
-      if config.values.qol and config.values.qol.quit_on_done then
+      if config.values.qol.quit_on_done then
         pcall(function()
           vim.cmd("qa")
         end)
@@ -144,7 +143,7 @@ local function register_advance_autocmd(orig_buf, left_win, right_win, right_buf
   })
 end
 
-local function split_conflict_markers()
+split_conflict_markers = function()
   local orig_buf = vim.api.nvim_get_current_buf()
   local orig_ft = vim.bo.filetype
   local left_win = vim.api.nvim_get_current_win()
@@ -153,7 +152,7 @@ local function split_conflict_markers()
   local right_win, right_buf = setup_right_pane(orig_buf, orig_ft)
   setup_left_pane(left_win, conflict_style)
 
-  if config.values.qol and config.values.qol.advance_on_save then
+  if config.values.qol.advance_on_save then
     register_advance_autocmd(orig_buf, left_win, right_win, right_buf)
   end
 end

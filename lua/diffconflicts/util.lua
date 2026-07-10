@@ -1,5 +1,3 @@
-local config = require("diffconflicts.config")
-
 local M = {}
 
 function M.close_win_if_valid(winid)
@@ -21,9 +19,6 @@ function M.is_plugin_aux_buffer(bufnr)
     return true
   end
   if tail == "BASE" or tail == "LOCAL" or tail == "REMOTE" then
-    return true
-  end
-  if tail:find("^~base%.$") or tail:find("^~local%.$") or tail:find("^~other%.$") then
     return true
   end
   return false
@@ -61,8 +56,7 @@ function M.repo_root_from_marker(marker, path)
 end
 
 function M.repo_root(path)
-  local marker = config.values.vcs == "hg" and ".hg" or ".git"
-  return M.repo_root_from_marker(marker, path)
+  return M.repo_root_from_marker(".git", path)
 end
 
 function M.open_file_safe(path)

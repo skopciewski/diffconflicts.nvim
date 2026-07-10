@@ -1,4 +1,3 @@
-local config = require("diffconflicts.config")
 local match = require("diffconflicts.match")
 local util = require("diffconflicts.util")
 
@@ -120,10 +119,7 @@ local function generate_git_stage_history_buffers()
 
   local function git_show_stage(stage)
     local spec = ":" .. stage .. ":" .. rel
-    local cmd = "git -C "
-      .. vim.fn.shellescape(root_p)
-      .. " --no-pager show "
-      .. vim.fn.shellescape(spec)
+    local cmd = "git -C " .. vim.fn.shellescape(root_p) .. " --no-pager show " .. vim.fn.shellescape(spec)
     local out = vim.fn.systemlist(cmd)
     if vim.v.shell_error ~= 0 then
       return nil
