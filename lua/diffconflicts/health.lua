@@ -1,7 +1,7 @@
 local M = {}
 
 function M.check()
-  vim.health.start("diffconflicts.nvim")
+  vim.health.start("diffconflicts")
 
   if vim.fn.has("nvim-0.10") == 0 then
     vim.health.error("Neovim 0.10+ is required")
