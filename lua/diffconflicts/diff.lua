@@ -109,8 +109,9 @@ local function setup_left_pane(left_win, conflict_style)
 end
 
 local split_conflict_markers
+local register_advance_autocmd
 
-local function register_advance_autocmd(orig_buf, left_win, right_win, right_buf)
+register_advance_autocmd = function(orig_buf, left_win, right_win, right_buf)
   vim.api.nvim_clear_autocmds({ group = advance_augroup, buffer = orig_buf })
   vim.api.nvim_create_autocmd("BufWritePost", {
     group = advance_augroup,
