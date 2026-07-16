@@ -4,18 +4,23 @@
     "formatter": true,
     "mcp": {
         "gh_grep": {
-            "enabled": true,
+            "enabled": true
         },
-        "websearch": {
-            "enabled": true,
+        "searxng": {
+            "enabled": true
         },
         "knowledge-base": {
             "type": "local",
-            "command": ["lancedb-mcp"],
+            "command": [
+                "lancedb-mcp"
+            ],
             "environment": {
                 "KB_STORAGE_PATH": "/mnt/knowledge-base/diffconflicts.nvim"
             },
             "enabled": true
+        },
+        "playwright": {
+            "enabled": true
         }
-    },
+    }
 }

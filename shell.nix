@@ -17,9 +17,7 @@ let
   };
 in
 pkgs.mkShell {
-  packages =
-    projectPackages
-    ++ (with pkgs; [
-      containerScripts
-    ]);
+  packages = with pkgs; [
+    containerScripts
+  ];
 }
